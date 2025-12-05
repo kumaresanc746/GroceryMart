@@ -37,6 +37,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Tab switching
 function switchTab(tabName) {
+    console.log('Switching to tab:', tabName);
+    
     // Hide all tabs
     document.querySelectorAll('.tab-content').forEach(tab => {
         tab.classList.remove('active');
@@ -46,8 +48,23 @@ function switchTab(tabName) {
     });
     
     // Show selected tab
-    document.getElementById(`${tabName}-tab`).classList.add('active');
-    event.target.classList.add('active');
+    const targetTab = document.getElementById(`${tabName}-tab`);
+    if (targetTab) {
+        targetTab.classList.add('active');
+    }
+    
+    // Activate the clicked button
+    if (event && event.target) {
+        event.target.classList.add('active');
+    } else {
+        // Fallback: find button by tab name
+        const buttons = document.querySelectorAll('.tab-button');
+        buttons.forEach(btn => {
+            if (btn.textContent.toLowerCase().includes(tabName.toLowerCase())) {
+                btn.classList.add('active');
+            }
+        });
+    }
     
     // Load data for the tab
     if (tabName === 'users') {
@@ -56,6 +73,9 @@ function switchTab(tabName) {
         loadOrders();
     } else if (tabName === 'deliveries') {
         loadDeliveries();
+    } else if (tabName === 'products') {
+        // Reload products when switching back to products tab
+        loadDashboard();
     }
 }
 
@@ -63,19 +83,42 @@ function switchTab(tabName) {
 async function loadDashboard() {
     try {
         console.log('Loading dashboard data...');
-        const stats = await adminAPI.getStats();
-        console.log('Stats loaded:', stats);
-        updateStats(stats);
         
-        const products = await adminAPI.getProducts();
-        console.log('Products loaded:', products.length);
-        displayProducts(products);
+        // Load stats
+        try {
+            const stats = await adminAPI.getStats();
+            console.log('Stats loaded:', stats);
+            updateStats(stats);
+        } catch (statsError) {
+            console.error('Error loading stats:', statsError);
+            // Set default values if stats fail
+            updateStats({
+                totalProducts: 0,
+                lowStockCount: 0,
+                totalCustomers: 0,
+                pendingOrders: 0,
+                deliveriesToday: 0
+            });
+        }
+        
+        // Load products
+        try {
+            const products = await adminAPI.getProducts();
+            console.log('Products loaded:', products ? products.length : 0);
+            if (products && Array.isArray(products)) {
+                displayProducts(products);
+            } else {
+                displayProducts([]);
+            }
+        } catch (productsError) {
+            console.error('Error loading products:', productsError);
+            const tbody = document.getElementById('products-table');
+            if (tbody) {
+                tbody.innerHTML = `<tr><td colspan="6" class="error">Error loading products: ${productsError.message}</td></tr>`;
+            }
+        }
     } catch (error) {
         console.error('Error loading dashboard:', error);
-        const tbody = document.getElementById('products-table');
-        if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="6" class="error">Error loading products: ${error.message}</td></tr>`;
-        }
         alert('Failed to load dashboard: ' + error.message);
     }
 }
@@ -126,14 +169,23 @@ function displayProducts(products) {
 
 // Load users
 async function loadUsers() {
+    const tbody = document.getElementById('users-table');
+    if (!tbody) {
+        console.error('Users table not found');
+        return;
+    }
+    
+    tbody.innerHTML = '<tr><td colspan="5" class="loading">Loading users...</td></tr>';
+    
     try {
+        console.log('Loading users...');
         const users = await adminAPI.getUsers();
-        allUsers = users;
-        displayUsers(users);
+        console.log('Users loaded:', users ? users.length : 0);
+        allUsers = users || [];
+        displayUsers(allUsers);
     } catch (error) {
         console.error('Error loading users:', error);
-        document.getElementById('users-table').innerHTML = 
-            `<tr><td colspan="5" class="error">Error loading users: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="error">Error loading users: ${error.message}</td></tr>`;
     }
 }
 
@@ -158,103 +210,188 @@ function displayUsers(users) {
 
 // Load orders
 async function loadOrders() {
+    const tbody = document.getElementById('orders-table');
+    if (!tbody) {
+        console.error('Orders table not found');
+        return;
+    }
+    
+    tbody.innerHTML = '<tr><td colspan="7" class="loading">Loading orders...</td></tr>';
+    
     try {
+        console.log('Loading orders...');
         const orders = await adminAPI.getOrders();
-        allOrders = orders;
-        displayOrders(orders);
+        console.log('Orders loaded:', orders ? orders.length : 0);
+        allOrders = orders || [];
+        displayOrders(allOrders);
     } catch (error) {
         console.error('Error loading orders:', error);
-        document.getElementById('orders-table').innerHTML = 
-            `<tr><td colspan="7" class="error">Error loading orders: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="error">Error loading orders: ${error.message}</td></tr>`;
     }
 }
 
 // Display orders
 function displayOrders(orders) {
     const tbody = document.getElementById('orders-table');
+    if (!tbody) {
+        console.error('Orders table tbody not found');
+        return;
+    }
+    
     if (!orders || orders.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" class="loading">No orders found</td></tr>';
         return;
     }
 
-    tbody.innerHTML = orders.map(order => `
-        <tr>
-            <td>#${order._id.toString().slice(-8)}</td>
-            <td>${order.user ? order.user.name : 'N/A'}<br><small>${order.user ? order.user.email : ''}</small></td>
-            <td>${order.items.length} items</td>
-            <td>₹${order.totalAmount}</td>
-            <td><span class="status-badge status-${order.status}">${order.status.toUpperCase()}</span></td>
-            <td>${new Date(order.createdAt).toLocaleDateString()}</td>
-            <td>
-                <div class="order-actions">
-                    ${order.status === 'pending' ? `<button class="btn-status confirm" onclick="window.updateOrderStatus('${order._id}', 'confirmed')">Confirm</button>` : ''}
-                    ${order.status === 'confirmed' ? `<button class="btn-status ship" onclick="window.updateOrderStatus('${order._id}', 'processing')">Process</button>` : ''}
-                    ${order.status === 'processing' ? `<button class="btn-status ship" onclick="window.updateOrderStatus('${order._id}', 'shipped')">Ship</button>` : ''}
-                    ${order.status === 'shipped' ? `<button class="btn-status deliver" onclick="window.updateOrderStatus('${order._id}', 'delivered')">Deliver</button>` : ''}
-                </div>
-            </td>
-        </tr>
-    `).join('');
+    try {
+        tbody.innerHTML = orders.map(order => {
+            const orderId = order._id ? order._id.toString().slice(-8) : 'N/A';
+            const userName = order.user ? (order.user.name || 'N/A') : 'N/A';
+            const userEmail = order.user ? (order.user.email || '') : '';
+            const itemsCount = order.items ? order.items.length : 0;
+            const totalAmount = order.totalAmount || 0;
+            const status = order.status || 'pending';
+            const orderDate = order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'N/A';
+            
+            let actionButtons = '';
+            if (status === 'pending') {
+                actionButtons = `<button class="btn-status confirm" onclick="window.updateOrderStatus('${order._id}', 'confirmed')">Confirm</button>`;
+            } else if (status === 'confirmed') {
+                actionButtons = `<button class="btn-status ship" onclick="window.updateOrderStatus('${order._id}', 'processing')">Process</button>`;
+            } else if (status === 'processing') {
+                actionButtons = `<button class="btn-status ship" onclick="window.updateOrderStatus('${order._id}', 'shipped')">Ship</button>`;
+            } else if (status === 'shipped') {
+                actionButtons = `<button class="btn-status deliver" onclick="window.updateOrderStatus('${order._id}', 'delivered')">Deliver</button>`;
+            }
+            
+            return `
+                <tr>
+                    <td>#${orderId}</td>
+                    <td>${userName}<br><small>${userEmail}</small></td>
+                    <td>${itemsCount} items</td>
+                    <td>₹${totalAmount}</td>
+                    <td><span class="status-badge status-${status}">${status.toUpperCase()}</span></td>
+                    <td>${orderDate}</td>
+                    <td>
+                        <div class="order-actions">
+                            ${actionButtons}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+        console.log('Orders displayed:', orders.length);
+    } catch (error) {
+        console.error('Error displaying orders:', error);
+        tbody.innerHTML = '<tr><td colspan="7" class="error">Error displaying orders</td></tr>';
+    }
 }
 
 // Load deliveries
 async function loadDeliveries() {
+    const tbody = document.getElementById('deliveries-table');
+    if (!tbody) {
+        console.error('Deliveries table not found');
+        return;
+    }
+    
+    tbody.innerHTML = '<tr><td colspan="7" class="loading">Loading delivery status...</td></tr>';
+    
     try {
+        console.log('Loading deliveries...');
         const orders = await adminAPI.getOrders();
-        displayDeliveries(orders);
+        console.log('Deliveries loaded:', orders ? orders.length : 0);
+        displayDeliveries(orders || []);
     } catch (error) {
         console.error('Error loading deliveries:', error);
-        document.getElementById('deliveries-table').innerHTML = 
-            `<tr><td colspan="7" class="error">Error loading deliveries: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="error">Error loading deliveries: ${error.message}</td></tr>`;
     }
 }
 
 // Display deliveries
 function displayDeliveries(orders) {
     const tbody = document.getElementById('deliveries-table');
+    if (!tbody) {
+        console.error('Deliveries table tbody not found');
+        return;
+    }
+    
     if (!orders || orders.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" class="loading">No deliveries found</td></tr>';
         return;
     }
 
-    tbody.innerHTML = orders.map(order => `
-        <tr>
-            <td>#${order._id.toString().slice(-8)}</td>
-            <td>${order.user ? order.user.name : 'N/A'}<br><small>${order.user ? order.user.phone : ''}</small></td>
-            <td>${order.deliveryAddress || 'N/A'}</td>
-            <td><span class="status-badge status-${order.status}">${order.status.toUpperCase()}</span></td>
-            <td>${new Date(order.createdAt).toLocaleDateString()}</td>
-            <td>${order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString() : 'Not delivered'}</td>
-            <td>
-                <select onchange="window.updateOrderStatus('${order._id}', this.value)" style="padding: 0.4rem;">
-                    <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>Pending</option>
-                    <option value="confirmed" ${order.status === 'confirmed' ? 'selected' : ''}>Confirmed</option>
-                    <option value="processing" ${order.status === 'processing' ? 'selected' : ''}>Processing</option>
-                    <option value="shipped" ${order.status === 'shipped' ? 'selected' : ''}>Shipped</option>
-                    <option value="delivered" ${order.status === 'delivered' ? 'selected' : ''}>Delivered</option>
-                    <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
-                </select>
-            </td>
-        </tr>
-    `).join('');
+    try {
+        tbody.innerHTML = orders.map(order => {
+            const orderId = order._id ? order._id.toString().slice(-8) : 'N/A';
+            const userName = order.user ? (order.user.name || 'N/A') : 'N/A';
+            const userPhone = order.user ? (order.user.phone || '') : '';
+            const deliveryAddress = order.deliveryAddress || 'N/A';
+            const status = order.status || 'pending';
+            const orderDate = order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'N/A';
+            const deliveryDate = order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString() : 'Not delivered';
+            
+            return `
+                <tr>
+                    <td>#${orderId}</td>
+                    <td>${userName}<br><small>${userPhone}</small></td>
+                    <td>${deliveryAddress}</td>
+                    <td><span class="status-badge status-${status}">${status.toUpperCase()}</span></td>
+                    <td>${orderDate}</td>
+                    <td>${deliveryDate}</td>
+                    <td>
+                        <select onchange="window.updateOrderStatus('${order._id}', this.value)" style="padding: 0.4rem;">
+                            <option value="pending" ${status === 'pending' ? 'selected' : ''}>Pending</option>
+                            <option value="confirmed" ${status === 'confirmed' ? 'selected' : ''}>Confirmed</option>
+                            <option value="processing" ${status === 'processing' ? 'selected' : ''}>Processing</option>
+                            <option value="shipped" ${status === 'shipped' ? 'selected' : ''}>Shipped</option>
+                            <option value="delivered" ${status === 'delivered' ? 'selected' : ''}>Delivered</option>
+                            <option value="cancelled" ${status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+                        </select>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+        console.log('Deliveries displayed:', orders.length);
+    } catch (error) {
+        console.error('Error displaying deliveries:', error);
+        tbody.innerHTML = '<tr><td colspan="7" class="error">Error displaying deliveries</td></tr>';
+    }
 }
 
 // Update order status
 async function updateOrderStatus(orderId, status) {
+    if (!orderId || !status) {
+        alert('Invalid order ID or status');
+        return;
+    }
+    
     try {
+        console.log('Updating order status:', orderId, status);
         const deliveryDate = status === 'delivered' ? new Date().toISOString() : null;
         await adminAPI.updateOrderStatus(orderId, status, deliveryDate);
         alert('Order status updated successfully');
         
-        // Reload data
-        loadDashboard();
-        if (document.getElementById('orders-tab').classList.contains('active')) {
+        // Reload stats
+        try {
+            const stats = await adminAPI.getStats();
+            updateStats(stats);
+        } catch (e) {
+            console.error('Error reloading stats:', e);
+        }
+        
+        // Reload current tab data
+        const ordersTab = document.getElementById('orders-tab');
+        const deliveriesTab = document.getElementById('deliveries-tab');
+        
+        if (ordersTab && ordersTab.classList.contains('active')) {
             loadOrders();
         }
-        if (document.getElementById('deliveries-tab').classList.contains('active')) {
+        if (deliveriesTab && deliveriesTab.classList.contains('active')) {
             loadDeliveries();
         }
     } catch (error) {
+        console.error('Error updating order status:', error);
         alert('Failed to update order status: ' + error.message);
     }
 }
