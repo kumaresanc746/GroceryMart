@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GroceryMart - Fresh Groceries Delivered</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <h1>🛒 GroceryMart</h1>
+            </div>
+            <nav class="nav">
+                <a href="index.html" class="active">Home</a>
+                <a href="products.html">Products</a>
+                <a href="cart.html">Cart (<span id="cart-count">0</span>)</a>
+                <a href="profile.html">Profile</a>
+                <a href="#" id="login-link">Login</a>
+                <a href="#" id="logout-link" style="display:none;">Logout</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-content">
+                <h2>Fresh Groceries Delivered to Your Doorstep</h2>
+                <p>Shop from 1000+ products with lightning-fast delivery</p>
+                <a href="products.html" class="btn-primary">Shop Now</a>
+            </div>
+        </section>
+
+        <section class="categories">
+            <div class="container">
+                <h2>Shop by Category</h2>
+                <div class="category-grid">
+                    <div class="category-card" onclick="filterCategory('Fruits')">
+                        <div class="category-icon">🍎</div>
+                        <h3>Fruits</h3>
+                    </div>
+                    <div class="category-card" onclick="filterCategory('Vegetables')">
+                        <div class="category-icon">🥬</div>
+                        <h3>Vegetables</h3>
+                    </div>
+                    <div class="category-card" onclick="filterCategory('Dairy')">
+                        <div class="category-icon">🥛</div>
+                        <h3>Dairy</h3>
+                    </div>
+                    <div class="category-card" onclick="filterCategory('Snacks')">
+                        <div class="category-icon">🍿</div>
+                        <h3>Snacks</h3>
+                    </div>
+                    <div class="category-card" onclick="filterCategory('Beverages')">
+                        <div class="category-icon">🥤</div>
+                        <h3>Beverages</h3>
+                    </div>
+                    <div class="category-card" onclick="filterCategory('Household')">
+                        <div class="category-icon">🧹</div>
+                        <h3>Household</h3>
+                    </div>
+                    <div class="category-card" onclick="filterCategory('Staples')">
+                        <div class="category-icon">🌾</div>
+                        <h3>Staples</h3>
+                    </div>
+                    <div class="category-card" onclick="filterCategory('Personal Care')">
+                        <div class="category-icon">🧴</div>
+                        <h3>Personal Care</h3>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="featured-products">
+            <div class="container">
+                <h2>Featured Products</h2>
+                <div class="products-grid" id="featured-products">
+                    <!-- Products loaded dynamically -->
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; GroceryMart. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
+

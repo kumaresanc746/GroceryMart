@@ -1,0 +1,14 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: backend-monitor
+  namespace: grocery-mart
+spec:
+  selector:
+    matchLabels:
+      app: backend
+  endpoints:
+  - port: 3000
+    path: /metrics
+    interval: 30s
+

@@ -1,0 +1,173 @@
+---
+- name: Configure GroceryMart Infrastructure
+  hosts: ec2_instances
+  become: yes
+  vars:
+    docker_compose_version: "2.23.0"
+    jenkins_version: "2.426.1"
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install required packages
+      apt:
+        name:
+          - curl
+          - wget
+          - git
+          - unzip
+          - apt-transport-https
+          - ca-certificates
+          - gnupg
+          - lsb-release
+        state: present
+
+    - name: Install Docker
+      block:
+        - name: Add Docker GPG key
+          apt_key:
+            url: https://download.docker.com/linux/ubuntu/gpg
+            state: present
+
+        - name: Add Docker repository
+          apt_repository:
+            repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+            state: present
+
+        - name: Install Docker
+          apt:
+            name:
+              - docker-ce
+              - docker-ce-cli
+              - containerd.io
+            state: present
+
+        - name: Start and enable Docker
+          systemd:
+            name: docker
+            state: started
+            enabled: yes
+
+        - name: Add ubuntu user to docker group
+          user:
+            name: ubuntu
+            groups: docker
+            append: yes
+
+    - name: Install Docker Compose
+      get_url:
+        url: "https://github.com/docker/compose/releases/download/v{{ docker_compose_version }}/docker-compose-linux-x86_64"
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
+
+    - name: Verify Docker Compose installation
+      command: docker-compose --version
+      register: docker_compose_version_output
+      changed_when: false
+
+    - name: Install kubectl
+      block:
+        - name: Download kubectl
+          get_url:
+            url: https://dl.k8s.io/release/v1.28.0/bin/linux/amd64/kubectl
+            dest: /usr/local/bin/kubectl
+            mode: '0755'
+
+        - name: Verify kubectl installation
+          command: kubectl version --client
+          register: kubectl_version_output
+          changed_when: false
+
+    - name: Install Jenkins
+      block:
+        - name: Add Jenkins repository key
+          apt_key:
+            url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+            state: present
+
+        - name: Add Jenkins repository
+          apt_repository:
+            repo: "deb https://pkg.jenkins.io/debian-stable binary/"
+            state: present
+
+        - name: Install Jenkins
+          apt:
+            name: jenkins
+            state: present
+
+        - name: Start and enable Jenkins
+          systemd:
+            name: jenkins
+            state: started
+            enabled: yes
+
+        - name: Add jenkins user to docker group
+          user:
+            name: jenkins
+            groups: docker
+            append: yes
+
+    - name: Create application directory
+      file:
+        path: /opt/grocery-mart
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    - name: Copy application files
+      synchronize:
+        src: "{{ playbook_dir }}/../"
+        dest: /opt/grocery-mart
+        delete: yes
+        rsync_opts:
+          - "--exclude=.git"
+          - "--exclude=node_modules"
+          - "--exclude=.terraform"
+
+    - name: Create docker-compose override directory
+      file:
+        path: /opt/grocery-mart
+        state: directory
+
+    - name: Deploy application with Docker Compose
+      docker_compose:
+        project_src: /opt/grocery-mart
+        state: present
+        pull: yes
+      become_user: ubuntu
+
+    - name: Configure Kubernetes (if needed)
+      block:
+        - name: Create kubeconfig directory
+          file:
+            path: /home/ubuntu/.kube
+            state: directory
+            owner: ubuntu
+            group: ubuntu
+
+        - name: Copy kubeconfig (if provided)
+          copy:
+            src: "{{ playbook_dir }}/kubeconfig"
+            dest: /home/ubuntu/.kube/config
+            owner: ubuntu
+            group: ubuntu
+            mode: '0600'
+          when: kubeconfig_file is defined
+
+    - name: Display Jenkins initial admin password
+      command: cat /var/lib/jenkins/secrets/initialAdminPassword
+      register: jenkins_password
+      changed_when: false
+      failed_when: false
+
+    - name: Print Jenkins access information
+      debug:
+        msg:
+          - "Jenkins is installed and running"
+          - "Access Jenkins at: http://{{ ansible_host }}:8080"
+          - "Initial admin password: {{ jenkins_password.stdout }}"
+
