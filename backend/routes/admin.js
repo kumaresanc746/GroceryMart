@@ -147,10 +147,37 @@ router.get('/users', authenticate, isAdmin, async (req, res) => {
 router.get('/orders', authenticate, isAdmin, async (req, res) => {
     try {
         const orders = await Order.find()
-            .populate('user', 'name email phone')
-            .populate('items.product', 'name image')
+            .populate('user', 'name email phone address')
+            .populate('items.product', 'name image price')
             .sort({ createdAt: -1 });
         res.json(orders);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// Update Order Status
+router.put('/orders/update-status/:id', authenticate, isAdmin, async (req, res) => {
+    try {
+        const { status, deliveryDate } = req.body;
+        
+        const updateData = { status };
+        if (deliveryDate) {
+            updateData.deliveryDate = new Date(deliveryDate);
+        }
+        
+        const order = await Order.findByIdAndUpdate(
+            req.params.id,
+            updateData,
+            { new: true }
+        ).populate('user', 'name email phone')
+         .populate('items.product', 'name image');
+        
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+        
+        res.json({ message: 'Order status updated successfully', order });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

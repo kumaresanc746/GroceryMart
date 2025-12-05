@@ -171,6 +171,13 @@ export const adminAPI = {
 
     getOrders: async () => {
         return apiCall('/admin/orders');
+    },
+
+    updateOrderStatus: async (orderId, status, deliveryDate) => {
+        return apiCall(`/admin/orders/update-status/${orderId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ status, deliveryDate })
+        });
     }
 };
 
