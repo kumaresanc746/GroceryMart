@@ -4,41 +4,67 @@ import { authAPI } from './api.js';
 function checkAuth() {
     const token = localStorage.getItem('token');
     const userRole = localStorage.getItem('userRole');
+    const nav = document.querySelector('.nav');
     
-    // Hide/show admin login link
-    const adminLoginLink = document.getElementById('admin-login-link');
-    if (adminLoginLink) {
-        if (token && userRole === 'admin') {
-            adminLoginLink.style.display = 'none';
+    if (!nav) return;
+    
+    // Get the existing admin link from HTML (if it exists)
+    let adminLink = document.getElementById('admin-login-link');
+    
+    // Remove any duplicate admin links (by different IDs or multiple instances)
+    const allAdminLinks = nav.querySelectorAll('#admin-login-link, #admin-nav-link, a[href="admin-dashboard.html"]');
+    if (allAdminLinks.length > 1) {
+        // Keep the first one, remove others
+        for (let i = 1; i < allAdminLinks.length; i++) {
+            if (allAdminLinks[i].parentNode === nav) {
+                allAdminLinks[i].remove();
+            }
+        }
+        // Re-get the first one
+        adminLink = document.getElementById('admin-login-link') || nav.querySelector('a[href="admin-dashboard.html"]');
+    }
+    
+    // If no admin link exists, create one
+    if (!adminLink) {
+        adminLink = document.createElement('a');
+        adminLink.id = 'admin-login-link';
+        const loginLink = document.getElementById('login-link');
+        if (loginLink && loginLink.parentNode) {
+            loginLink.parentNode.insertBefore(adminLink, loginLink);
         } else {
-            adminLoginLink.style.display = 'inline';
+            nav.appendChild(adminLink);
         }
     }
     
+    // Get login and logout links
+    const loginLink = document.getElementById('login-link');
+    const logoutLink = document.getElementById('logout-link');
+    
     if (token) {
-        const loginLink = document.getElementById('login-link');
-        const logoutLink = document.getElementById('logout-link');
+        // User is logged in
         if (loginLink) loginLink.style.display = 'none';
         if (logoutLink) logoutLink.style.display = 'inline';
         
-        if (userRole === 'admin') {
-            // Replace admin login link with dashboard link
-            if (adminLoginLink) {
-                adminLoginLink.href = 'admin-dashboard.html';
-                adminLoginLink.textContent = 'Admin Dashboard';
-            } else {
-                const nav = document.querySelector('.nav');
-                const adminLink = document.createElement('a');
-                adminLink.href = 'admin-dashboard.html';
-                adminLink.textContent = 'Admin Dashboard';
-                nav.appendChild(adminLink);
-            }
+        if (userRole === 'admin' && adminLink) {
+            // Show admin dashboard link for admin
+            adminLink.href = 'admin-dashboard.html';
+            adminLink.textContent = 'Admin Dashboard';
+            adminLink.style.display = 'inline';
+        } else if (adminLink) {
+            // Hide admin link for regular users
+            adminLink.style.display = 'none';
         }
     } else {
-        const loginLink = document.getElementById('login-link');
-        const logoutLink = document.getElementById('logout-link');
+        // User is not logged in
         if (loginLink) loginLink.style.display = 'inline';
         if (logoutLink) logoutLink.style.display = 'none';
+        
+        // Show admin login link
+        if (adminLink) {
+            adminLink.href = 'admin-login.html';
+            adminLink.textContent = 'Admin';
+            adminLink.style.display = 'inline';
+        }
     }
 }
 
