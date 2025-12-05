@@ -3,12 +3,24 @@ import { checkAuth } from './auth.js';
 
 // Load order history
 async function loadOrders() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        document.getElementById('orders-list').innerHTML = 
+            `<div class="loading">Please <a href="login.html">login</a> to view your orders</div>`;
+        return;
+    }
+
     try {
         const orders = await orderAPI.getHistory();
         displayOrders(orders);
     } catch (error) {
-        document.getElementById('orders-list').innerHTML = 
-            `<div class="error">Error loading orders: ${error.message}</div>`;
+        if (error.message.includes('401') || error.message.includes('token')) {
+            document.getElementById('orders-list').innerHTML = 
+                `<div class="loading">Please <a href="login.html">login</a> to view your orders</div>`;
+        } else {
+            document.getElementById('orders-list').innerHTML = 
+                `<div class="error">Error loading orders: ${error.message}</div>`;
+        }
     }
 }
 

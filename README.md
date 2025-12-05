@@ -256,7 +256,7 @@ sudo apt install -y git
 
 ```bash
 cd /opt
-sudo git clone <your-repository-url> grocery-mart
+sudo git clone https://github.com/kumaresanc746/GroceryMart.git  grocery-mart
 sudo chown -R ubuntu:ubuntu grocery-mart
 cd grocery-mart
 ```

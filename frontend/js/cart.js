@@ -5,13 +5,27 @@ let cart = null;
 
 // Load cart
 async function loadCart() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        document.getElementById('cart-items').innerHTML = 
+            `<div class="loading">Please <a href="login.html">login</a> to view your cart</div>`;
+        document.getElementById('checkout-btn').disabled = true;
+        return;
+    }
+
     try {
         cart = await cartAPI.get();
         displayCart();
         updateCartCount();
     } catch (error) {
-        document.getElementById('cart-items').innerHTML = 
-            `<div class="error">Error loading cart: ${error.message}</div>`;
+        if (error.message.includes('401') || error.message.includes('token')) {
+            document.getElementById('cart-items').innerHTML = 
+                `<div class="loading">Please <a href="login.html">login</a> to view your cart</div>`;
+            document.getElementById('checkout-btn').disabled = true;
+        } else {
+            document.getElementById('cart-items').innerHTML = 
+                `<div class="error">Error loading cart: ${error.message}</div>`;
+        }
     }
 }
 
@@ -80,12 +94,28 @@ async function removeItem(productId) {
 
 // Update cart count
 async function updateCartCount() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        const cartCountEl = document.getElementById('cart-count');
+        if (cartCountEl) {
+            cartCountEl.textContent = '0';
+        }
+        return;
+    }
+
     try {
         const cart = await cartAPI.get();
         const count = cart.items ? cart.items.reduce((sum, item) => sum + item.quantity, 0) : 0;
-        document.getElementById('cart-count').textContent = count;
+        const cartCountEl = document.getElementById('cart-count');
+        if (cartCountEl) {
+            cartCountEl.textContent = count;
+        }
     } catch (error) {
-        console.error('Error updating cart count:', error);
+        // Silently fail for cart count - don't show errors
+        const cartCountEl = document.getElementById('cart-count');
+        if (cartCountEl) {
+            cartCountEl.textContent = '0';
+        }
     }
 }
 

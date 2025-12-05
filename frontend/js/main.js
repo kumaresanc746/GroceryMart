@@ -36,17 +36,40 @@ function displayProducts(products, containerId) {
 
 // Add to cart
 async function addToCart(productId) {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        if (confirm('Please login to add items to cart. Do you want to login now?')) {
+            window.location.href = 'login.html';
+        }
+        return;
+    }
+
     try {
         await cartAPI.add(productId, 1);
         updateCartCount();
         alert('Product added to cart!');
     } catch (error) {
-        alert('Failed to add to cart: ' + error.message);
+        if (error.message.includes('401') || error.message.includes('token')) {
+            if (confirm('Session expired. Please login again. Do you want to login now?')) {
+                window.location.href = 'login.html';
+            }
+        } else {
+            alert('Failed to add to cart: ' + error.message);
+        }
     }
 }
 
 // Update cart count
 async function updateCartCount() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        const cartCountEl = document.getElementById('cart-count');
+        if (cartCountEl) {
+            cartCountEl.textContent = '0';
+        }
+        return;
+    }
+
     try {
         const cart = await cartAPI.get();
         const count = cart.items ? cart.items.reduce((sum, item) => sum + item.quantity, 0) : 0;
@@ -55,7 +78,11 @@ async function updateCartCount() {
             cartCountEl.textContent = count;
         }
     } catch (error) {
-        console.error('Error updating cart count:', error);
+        // Silently fail for cart count - don't show errors
+        const cartCountEl = document.getElementById('cart-count');
+        if (cartCountEl) {
+            cartCountEl.textContent = '0';
+        }
     }
 }
 

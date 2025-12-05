@@ -29,6 +29,21 @@ async function apiCall(endpoint, options = {}) {
         const data = await response.json();
 
         if (!response.ok) {
+            // Handle 401 Unauthorized - redirect to login
+            if (response.status === 401) {
+                // Don't redirect if already on login/signup pages
+                if (!window.location.pathname.includes('login') && 
+                    !window.location.pathname.includes('signup')) {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('userRole');
+                    localStorage.removeItem('userId');
+                    if (window.location.pathname.includes('admin')) {
+                        window.location.href = 'admin-login.html';
+                    } else {
+                        window.location.href = 'login.html';
+                    }
+                }
+            }
             throw new Error(data.message || 'An error occurred');
         }
 
