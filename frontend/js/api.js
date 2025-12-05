@@ -146,20 +146,10 @@ export const adminAPI = {
     },
 
     addProduct: async (productData) => {
-        const formData = new FormData();
-        Object.keys(productData).forEach(key => {
-            formData.append(key, productData[key]);
-        });
-        
-        const token = getAuthToken();
-        const response = await fetch(`${API_BASE_URL}/admin/products/add`, {
+        return apiCall('/admin/products/add', {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            },
-            body: formData
+            body: JSON.stringify(productData)
         });
-        return response.json();
     },
 
     updateProduct: async (id, productData) => {

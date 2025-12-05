@@ -5,20 +5,40 @@ function checkAuth() {
     const token = localStorage.getItem('token');
     const userRole = localStorage.getItem('userRole');
     
+    // Hide/show admin login link
+    const adminLoginLink = document.getElementById('admin-login-link');
+    if (adminLoginLink) {
+        if (token && userRole === 'admin') {
+            adminLoginLink.style.display = 'none';
+        } else {
+            adminLoginLink.style.display = 'inline';
+        }
+    }
+    
     if (token) {
-        document.getElementById('login-link').style.display = 'none';
-        document.getElementById('logout-link').style.display = 'inline';
+        const loginLink = document.getElementById('login-link');
+        const logoutLink = document.getElementById('logout-link');
+        if (loginLink) loginLink.style.display = 'none';
+        if (logoutLink) logoutLink.style.display = 'inline';
         
         if (userRole === 'admin') {
-            const nav = document.querySelector('.nav');
-            const adminLink = document.createElement('a');
-            adminLink.href = 'admin-dashboard.html';
-            adminLink.textContent = 'Admin';
-            nav.appendChild(adminLink);
+            // Replace admin login link with dashboard link
+            if (adminLoginLink) {
+                adminLoginLink.href = 'admin-dashboard.html';
+                adminLoginLink.textContent = 'Admin Dashboard';
+            } else {
+                const nav = document.querySelector('.nav');
+                const adminLink = document.createElement('a');
+                adminLink.href = 'admin-dashboard.html';
+                adminLink.textContent = 'Admin Dashboard';
+                nav.appendChild(adminLink);
+            }
         }
     } else {
-        document.getElementById('login-link').style.display = 'inline';
-        document.getElementById('logout-link').style.display = 'none';
+        const loginLink = document.getElementById('login-link');
+        const logoutLink = document.getElementById('logout-link');
+        if (loginLink) loginLink.style.display = 'inline';
+        if (logoutLink) logoutLink.style.display = 'none';
     }
 }
 
